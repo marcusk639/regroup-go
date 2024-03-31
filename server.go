@@ -17,6 +17,9 @@ func InitGuestController(db *mongo.Client, router *gin.Engine) {
 
 func InitControllers(db *mongo.Client, router *gin.Engine) {
 	InitGuestController(db, router)
+	router.GET("/health", func(ctx *gin.Context) {
+		ctx.JSON(200, gin.H{"status": "ok"})
+	})
 }
 
 func main() {
@@ -25,5 +28,5 @@ func main() {
 
 	InitControllers(db, router)
 
-	router.Run("localhost:8080")
+	router.Run("0.0.0.0:8080")
 }

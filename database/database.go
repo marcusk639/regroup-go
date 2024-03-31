@@ -10,7 +10,7 @@ import (
 )
 
 func Init() *mongo.Client {
-	connectionString := "mongodb://localhost:27017"
+	connectionString := "mongodb+srv://marcusk639:MpXnDflRTFLtEdEp@regroup.b0otx1w.mongodb.net/?retryWrites=true&w=majority&appName=Regroup"
 	clientOptions := options.Client().ApplyURI(connectionString)
 
 	client, err := mongo.Connect(context.TODO(), clientOptions)
