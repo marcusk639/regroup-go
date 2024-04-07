@@ -1,122 +1,65 @@
 package guestservice
 
 import (
-	"context"
+	"log"
 	"net/http"
 	models "regroup-api/models"
-	"time"
+	guestrepository "regroup-api/repositories"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type GuestService struct {
-	DB *mongo.Client
-}
-
-func GetCollection(db *mongo.Client) *mongo.Collection {
-	return db.Database("regroup").Collection("guests")
+	Repository *guestrepository.GuestRepository
 }
 
 func (service *GuestService) SaveGuest(c *gin.Context) {
-	guest := models.Guest{ID: primitive.NewObjectID()}
+	guest := models.Guest{}
 
 	if err := c.ShouldBindJSON(&guest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	collection := GetCollection(service.DB)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-
-	defer cancel()
-
-	_, err := collection.InsertOne(ctx, guest)
+	result, err := service.Repository.SaveGuest(guest)
 	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error saving guest"})
 		return
 	}
 
-	c.JSON(http.StatusOK, guest)
+	c.JSON(http.StatusOK, *result)
 }
 
 func (service *GuestService) GetGuests(c *gin.Context) {
-	var guests []models.Guest
+	guests, err := service.Repository.GetGuests()
 
-	collection := GetCollection(service.DB)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-
-	defer cancel()
-
-	cursor, err := collection.Find(ctx, gin.H{})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error getting guests"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	defer cursor.Close(ctx)
-
-	unmarshalError := cursor.All(ctx, &guests)
-	if unmarshalError != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error getting guests"})
-		return
-	}
-
-	c.JSON(http.StatusOK, guests)
+	c.JSON(http.StatusOK, *guests)
 }
 
 func (service *GuestService) GetGuest(c *gin.Context) {
 	id := c.Param("id")
 
-	objectID, objectIdErr := primitive.ObjectIDFromHex(id)
-	if objectIdErr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-		return
-	}
-
-	collection := GetCollection(service.DB)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-
-	defer cancel()
-
-	var guest models.Guest
-	result := collection.FindOne(ctx, gin.H{"_id": objectID})
-	err := result.Decode(&guest)
-
+	guest, err := service.Repository.GetGuest(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error getting guest"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, guest)
+	c.JSON(http.StatusOK, *guest)
 }
 
 func (service *GuestService) DeleteGuest(c *gin.Context) {
 	id := c.Param("id")
 
-	objectID, objectIdErr := primitive.ObjectIDFromHex(id)
-	if objectIdErr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-		return
-	}
-
-	collection := GetCollection(service.DB)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-
-	defer cancel()
-
-	result, err := collection.DeleteOne(ctx, gin.H{"_id": objectID})
+	err := service.Repository.DeleteGuest(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error deleting guest"})
-		return
-	}
-
-	if result.DeletedCount == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Guest not found"})
 		return
 	}
 
@@ -126,11 +69,6 @@ func (service *GuestService) DeleteGuest(c *gin.Context) {
 func (service *GuestService) UpdateGuest(c *gin.Context) {
 	id := c.Param("id")
 
-	objectID, objectIdErr := primitive.ObjectIDFromHex(id)
-	if objectIdErr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-	}
-
 	var guest models.Guest
 
 	if err := c.ShouldBindJSON(&guest); err != nil {
@@ -138,20 +76,9 @@ func (service *GuestService) UpdateGuest(c *gin.Context) {
 		return
 	}
 
-	collection := GetCollection(service.DB)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-
-	defer cancel()
-
-	result, err := collection.ReplaceOne(ctx, gin.H{"_id": objectID}, guest)
+	err := service.Repository.UpdateGuest(id, guest)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Error updating guest"})
-		return
-	}
-
-	if result.MatchedCount == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Guest not found"})
 		return
 	}
 

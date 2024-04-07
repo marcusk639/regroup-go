@@ -32,8 +32,8 @@ func (c *Controller) UpdateGuest(gin *gin.Context) {
 
 func (c *Controller) RegisterRoutes(router *gin.Engine) {
 	router.GET("/guests", c.GetGuests)
+	router.POST("/guests", c.SaveGuest)
 	router.GET("/guests/:id", c.GetGuest)
 	router.PUT("/guests/:id", c.UpdateGuest)
-	router.POST("/guests", c.SaveGuest)
 	router.DELETE("/guests/:id", c.DeleteGuest)
 }

@@ -3,6 +3,7 @@ package main
 import (
 	guestcontroller "regroup-api/controllers"
 	"regroup-api/database"
+	guestrepository "regroup-api/repositories"
 	guestservice "regroup-api/services"
 
 	"github.com/gin-gonic/gin"
@@ -10,16 +11,21 @@ import (
 )
 
 func InitGuestController(db *mongo.Client, router *gin.Engine) {
-	guestService := guestservice.GuestService{DB: db}
+	guestRepository := guestrepository.GuestRepository{DB: db, Collection: database.GetCollection(db, "guests")}
+	guestService := guestservice.GuestService{Repository: &guestRepository}
 	guestController := guestcontroller.Controller{GuestService: &guestService}
 	guestController.RegisterRoutes(router)
 }
 
-func InitControllers(db *mongo.Client, router *gin.Engine) {
-	InitGuestController(db, router)
+func InitHealthCheck(router *gin.Engine) {
 	router.GET("/health", func(ctx *gin.Context) {
 		ctx.JSON(200, gin.H{"status": "ok"})
 	})
+}
+
+func InitControllers(db *mongo.Client, router *gin.Engine) {
+	InitGuestController(db, router)
+	InitHealthCheck(router)
 }
 
 func main() {
